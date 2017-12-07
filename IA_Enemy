@@ -1,0 +1,124 @@
+public class AIzf: MonoBehaviour
+{
+	// Son d'impacts
+	public AudioClip Soundhit;
+	// Son de mort
+	public AudioClip SoundDead;
+	// Cible (Player)
+	public GameObject target;
+	// Distance entre l'enemy et la cible
+	public float distance;
+	// Distance de visibilité avant d'avancer
+	public float enemyVisibility = 5f;
+	// Vitesse de déplacement
+	public float speed = 0.5f;
+	// Gestion des animations 
+	private Animator Animation;
+	// Définis si l'enemy doit attaquer ou non 
+	private bool isOnPause = false;
+	// Définis si l'enemy est mort ou non
+	private bool isDead =  false;
+	
+	void Start()
+	{
+		// Initialisation de l'animator
+		Animation = GetComponent<Animator>();
+	}
+	
+	void Update()
+	{
+		// Calcule de la distance entre l'enemy et le player.
+		distance = Vector2.Distance (transform.position, target.transform.position);
+		
+		// Si la distance entre l'enemy et la target est inférieur à la variable "enemyVisibility" et que la variable "isOnPause" est à "faux"
+		if(distance < enemyVisibility && isOnPause == false)
+		{
+			// Lancement de l'animation "walk"
+			Animation.SetBool("Walk", true);
+			// Lancement de la méthode "EnemyWalk"
+			EnemyWalk();
+		}
+		// Sinon
+		else
+			// Arrêt de l'animation "walk"
+			Animation.SetBool("Walk", false);
+			
+		// Si la position de l'enemy est supérieure à la position du player
+		if (transform.position.x > target.transform.position.x)
+			// On tourne l'enemy vers la gauche (flip sur X)
+			GetComponent<SpriteRenderer>().flipX = true;
+		// Sinon
+		else
+			// On tourne l'enemy vers la droite (flip sur X)
+			GetComponent<SpriteRenderer>().flipX = false;
+	}
+	
+	// Méthode qui permet à l'enemy d'avancer vers la target (Player)
+	void EnemyWalk()
+	{
+		/** transform.position = position de l'enemy **/
+		
+		// L'enemy effectue une transition linéaire vers le target en fonction de la variable "speed".
+		transform.position = Vector2.Lerp (transform.position, target.transform.position, speed * Time.deltaTime);
+	}
+
+	// Méthode de détection du saut sur la tête de l'enemy (=> kill enemy)
+	void OnTriggerEnter2D(Collider2D col)
+	{
+		// Si le collider qui est touché correspond à celui qui a un tag "Player".
+		if(col.gameObject.tag == "Player" && !isDead)
+		{
+			// On joue l'animation "Dead"
+			Animation.SetTrigger("Dead");
+			// On joue le son "SoundDead"
+			GetComponent<AudioSource>().PlayOneShot(SoundDead);
+			// Quand l'enemy est tué, on passe la variable à "vraie".
+			isDead = true;
+			// On désactive le component de l'enemy 
+			GetComponent<AIZF>().enabled = false;
+		}	
+	}
+	
+	// Méthode de destruction d'un GameObject
+	public void DestroyGO()
+	{
+		// Destruction du gameObject
+		Destroy (gameObject);
+	}
+
+	// Méthode qui gère la collision entre le joueur et l'enemy
+	void OnCollisionEnter2D(Collision2D col)
+	{
+		// Si la collision est effectuée par un gameObject qui a un tag "Player".
+		if (col.gameObject.tag == "Player" && !isDead)
+			// Lancement de la "coroutine" avec comme paramettre le player.
+			StartCoroutine (hit (col.gameObject));
+	}
+	
+	
+	// Deplacement du joueur quand il est touché + temporisation (1sec d'attente)
+	IEnumerator hit(GameObject col)
+	{
+		Debug.Log("Player est touché");
+		// Joue le son "SoundHit"
+		GetComponent<AudioSource>().PlayOneShot(Soundhit);
+		// Variable qui permet de mettre la méthode "EnemyWalk" en pause 
+		isOnPause = true;
+		
+		if (transform.position.x > target.transform.position.x)
+				// On déplace le player vers la droite
+				col.GetComponent<Rigidbody2D>().velocity = (-Vector2.right * 200 * Time.deltaTime);
+			else
+				// On déplace le player vers la gauche
+				col.GetComponent<Rigidbody2D>().velocity = (+Vector2.right * 200 * Time.deltaTime);
+			
+		// Mise en place d'un temps d'attente d'une seconde
+		yield return new WaitForSeconds (1);
+		
+		// Remise à faux de la variable qui permet de mettre la méthode "EnemyWalk" en pause
+		isOnPause = false;
+	}
+	
+	
+}
+
