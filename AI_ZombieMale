@@ -1,0 +1,109 @@
+public class AIzm: MonoBehaviour
+{
+	// Point gauche délimitant la zone de déplacement
+	public Transform PtsA;
+	// Point droit délimitant la zone de déplacement
+	public Transform PtsB;
+	// Vitesse de déplacement de l'enemy
+	public float speed = 0,5f
+	// Sens de marche de l'enemy
+	public bool return = false;
+	// Variable de gestion des animations
+	private Animator Animation;
+	// Son de mort
+	public AudioClip SoundDead;
+	// Son d'impact
+	public AudioClip SoundHit;
+	// Définis si l'enemy est mort ou non
+	public bool isDead = false;
+	
+	
+	
+	private void Start()
+	{
+		// Initialisation de la variable qui gère les animations
+		Animation = GetComponent<Animator>();
+	}
+	
+	private void Update()
+	{
+		// Gestion du cas pour empecher de pousser l'enemy hors de la zone
+		if (transform.position.x > PtsB.transform.position.x)
+			transform.position = new Vector2(PtsB.transform.position.x, transform.position.y);
+		
+		if (transform.position.x > PtsA.transform.position.x)
+			transform.position = new Vector2(PtsA.transform.position.x, transform.position.y);
+		
+		// Dans le cas où l'enemy est dans le bon sens
+		if (!return)
+		{
+			// Déplacement de l'enemy de son point initial vers le point de destination (point B)
+			transform.position = Vector2.MoveTowards(transform.position, PtsB.position, speed * Time.deltaTime);
+		}
+		else
+		{
+			// Déplacement de l'enemy de son point initial vers le point de destination (point A)
+			transform.position = Vector2.MoveTowards(transform.position, PtsA.position, speed * Time.deltaTime);
+		}
+	}
+	
+	// Gestion de la collision entre l'enemy et les points 
+	private void OnTriggerEnter2D(Collider2D col)
+	{
+		// Si je touche le point A, il retourne au point B
+		if(col.gameObject.name == "PtsA")
+		{
+			return = false;
+			// Retourne l'enemy dans le bon sens
+			GetComponent<SpriteRenderer>().flipX = false;
+		}	
+		// Si l'enemy touche le point B, il retourne au point A
+		if(col.gameObject.name == "PtsB")
+		{
+			return = true;
+			// Retourne l'enemy dans le bon sens
+			GetComponent<SpriteRenderer>().flipX = true;
+		}
+		
+		// Détection du saut sur la tête de l'enemy (=> kill enemy)
+		if(col.gameObject.tag == "Player" && !isDead)
+		{
+			// Mort de l'enemy à vraie
+			isDead = true;
+			// Joue le son "SoundDead"
+			GetComponent<AudioSource>.PlayOneShot(SoundDead);
+			// Joue l'animation "dead"
+			Animation.SetTrigger("Dead");
+			// Fixe le rigidbody (impossible de le déplacer)
+			GetComponent<Rigidbody2D>().isKinematic = true;
+			// Désactive le component de l'enemny
+			GetComponent<AIzm>().enabled = false;
+		}
+	}
+	
+	// Méthode qui gère la collision entre le joueur et l'enemy
+	private void OnCollisionEnter2D(Collision2D col)
+	{
+		// Si la collision est effectuée par un gameObject qui a un tag "Player".
+		if(col.gameObject.tag == "Player")
+		{
+			//Joue le son "impact"
+			GetComponent<AudioSource>().PlayOneShot(SoundHit)
+			
+			// Si la position de l'enemy est supérieure à la position du target (il se trouve à droite)
+			if (transform.position.x > col.transform.position.x)
+				// On déplace le player vers la droite
+				col.gameObject.GetComponent<Rigidbody2D>().velocity = (-Vector2.right * 200 * Time.deltaTime);
+			else
+				// On déplace le player vers la gauche
+				col.gameObject.GetComponent<Rigidbody2D>().velocity = (+Vector2.right * 200 * Time.deltaTime);
+		}
+	}
+	
+	// Méthode de destruction du gameObject
+	private void DestroyGO()
+	{
+		// Destruction du gameObject
+		Destroy (gameObject);
+	}
+}
